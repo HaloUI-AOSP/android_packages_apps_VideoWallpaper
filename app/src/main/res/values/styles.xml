@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 haloUI
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+    <style name="VideoWallpaper.Theme" parent="Theme.SubSettingsBase" />
+    <style name="VideoWallpaper.Theme.Expressive" parent="Theme.SettingsBase.Expressive">
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="colorSurface">@color/settingslib_colorSurface</item>
+        <item name="preferenceTheme">@style/PreferenceTheme.SettingsLib.Expressive</item>
+    </style>
+</resources>

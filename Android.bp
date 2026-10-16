@@ -1,0 +1,32 @@
+// SPDX-FileCopyrightText: 2026 haloUI
+// SPDX-License-Identifier: Apache-2.0
+
+android_app {
+    name: "VideoWallpaper",
+    srcs: [
+        "app/src/main/java/**/*.kt",
+    ],
+    resource_dirs: [
+        "app/src/main/res",
+    ],
+    manifest: "app/src/main/AndroidManifest.xml",
+    platform_apis: true,
+    min_sdk_version: "current",
+    target_sdk_version: "current",
+    system_ext_specific: true,
+    certificate: "platform",
+    static_libs: [
+        "androidx.core_core-ktx",
+        "androidx.fragment_fragment",
+        "androidx.preference_preference",
+        "SettingsLibCollapsingToolbarBaseActivity",
+        "SettingsLibSettingsTheme",
+    ],
+    optimize: {
+        enabled: true,
+        shrink_resources: true,
+        proguard_flags_files: [
+            "app/proguard-rules.pro",
+        ],
+    },
+}

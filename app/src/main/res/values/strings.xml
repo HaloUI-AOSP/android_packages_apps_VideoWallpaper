@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 haloUI
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <string name="app_name">Video Wallpaper</string>
+    <string name="choose_video_file">Choose video file</string>
+    <string name="choose_video_summary">Select a video from storage</string>
+    <string name="play_video_with_sound">Play video with sound</string>
+    <string name="enable">Enable</string>
+    <string name="disable">Disable</string>
+    <string name="video_set">Video wallpaper set</string>
+</resources>
