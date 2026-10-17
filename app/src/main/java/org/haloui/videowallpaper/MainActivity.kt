@@ -5,6 +5,7 @@
 
 package org.haloui.videowallpaper
 
+import android.content.Context
 import android.content.res.Resources
 import android.net.Uri
 import android.os.Bundle
@@ -15,6 +16,7 @@ import androidx.preference.SwitchPreferenceCompat
 import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity
 import com.android.settingslib.widget.SettingsBasePreferenceFragment
 import com.android.settingslib.widget.SettingsThemeHelper
+import com.android.settingslib.widget.SliderPreference
 import java.io.File
 import java.util.concurrent.Executors
 import org.haloui.videowallpaper.R
@@ -58,17 +60,36 @@ class MainActivity : CollapsingToolbarBaseActivity() {
             setPreferencesFromResource(R.xml.videowallpaper_preferences, rootKey)
 
             val context = requireContext()
-            val unmuteFile = File(context.createDeviceProtectedStorageContext().filesDir, "unmute")
+            val deContext = context.createDeviceProtectedStorageContext()
+            val unmuteFile = File(deContext.filesDir, "unmute")
+            val prefs = deContext.getSharedPreferences("prefs", Context.MODE_PRIVATE)
 
             findPreference<Preference>("choose_video")!!.setOnPreferenceClickListener {
                 videoPicker.launch("video/*")
                 true
             }
 
+            val volumeSlider = findPreference<SliderPreference>("audio_volume")!!.apply {
+                min = 0
+                max = 100
+                value = prefs.getInt("volume", 100)
+                isEnabled = unmuteFile.exists()
+                setUpdatesContinuously(true)
+                setHapticFeedbackMode(SliderPreference.HAPTIC_FEEDBACK_MODE_ON_ENDS)
+                setOnPreferenceChangeListener { _, newValue ->
+                    val volume = newValue as Int
+                    prefs.edit().putInt("volume", volume).apply()
+                    VideoLiveWallpaperService.setVolume(context, volume / 100f)
+                    true
+                }
+            }
+
             findPreference<SwitchPreferenceCompat>("play_with_sound")!!.apply {
                 isChecked = unmuteFile.exists()
                 setOnPreferenceChangeListener { _, newValue ->
-                    if (newValue as Boolean) {
+                    val enabled = newValue as Boolean
+                    volumeSlider.isEnabled = enabled
+                    if (enabled) {
                         unmuteFile.writeBytes(byteArrayOf())
                         VideoLiveWallpaperService.unmuteMusic(context)
                     } else {

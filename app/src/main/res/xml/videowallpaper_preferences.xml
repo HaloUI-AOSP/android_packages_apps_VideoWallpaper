@@ -15,4 +15,10 @@
             android:summaryOn="@string/enable"
             android:summaryOff="@string/disable"
             android:persistent="false" />
+        <com.android.settingslib.widget.SliderPreference
+            android:key="audio_volume"
+            android:title="@string/audio_volume"
+            android:min="0"
+            android:max="100"
+            android:persistent="false" />
 </androidx.preference.PreferenceScreen>

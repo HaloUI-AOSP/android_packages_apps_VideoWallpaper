@@ -136,6 +136,12 @@ class VideoLiveWallpaperService : WallpaperService() {
                                 lastPosition = 0
                                 loadTransform()
                                 initPlayer(0)
+                            } else if (intent.hasExtra(KEY_VOLUME)) {
+                                val vol = intent.getFloatExtra(KEY_VOLUME, 1f).coerceIn(0f, 1f)
+                                val deContext = createDeviceProtectedStorageContext()
+                                if (isPrepared && File(deContext.filesDir, "unmute").exists()) {
+                                    mediaPlayer?.setVolume(vol, vol)
+                                }
                             } else {
                                 val pos = if (isPrepared) mediaPlayer?.currentPosition ?: lastPosition else lastPosition
                                 initPlayer(pos)
@@ -267,6 +273,8 @@ class VideoLiveWallpaperService : WallpaperService() {
             if (!videoFile.exists() || videoFile.length() == 0L) return
 
             val unmuted = File(deContext.filesDir, "unmute").exists()
+            val prefs = deContext.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            val savedVolume = prefs.getInt("volume", 100).coerceIn(0, 100) / 100f
             loadTransform()
 
             mediaPlayer = MediaPlayer().apply {
@@ -290,7 +298,7 @@ class VideoLiveWallpaperService : WallpaperService() {
                     )
                     FileInputStream(videoFile).use { setDataSource(it.fd) }
                     isLooping = true
-                    val volume = if (unmuted) 1f else 0f
+                    val volume = if (unmuted) savedVolume else 0f
                     setVolume(volume, volume)
                     setOnVideoSizeChangedListener { _, w, h ->
                         if (w > 0 && h > 0) {
@@ -468,6 +476,7 @@ class VideoLiveWallpaperService : WallpaperService() {
         const val VIDEO_PARAMS_CONTROL_ACTION = "org.haloui.videowallpaper"
         private const val KEY_ACTION = "music"
         private const val KEY_RELOAD = "reload"
+        private const val KEY_VOLUME = "volume"
         private const val ACTION_MUSIC_UNMUTE = false
         private const val ACTION_MUSIC_MUTE = true
 
@@ -515,6 +524,13 @@ class VideoLiveWallpaperService : WallpaperService() {
             Intent(VIDEO_PARAMS_CONTROL_ACTION).apply {
                 setPackage(context.packageName)
                 putExtra(KEY_ACTION, ACTION_MUSIC_UNMUTE)
+            }.also { context.sendBroadcast(it) }
+        }
+
+        fun setVolume(context: Context, volume: Float) {
+            Intent(VIDEO_PARAMS_CONTROL_ACTION).apply {
+                setPackage(context.packageName)
+                putExtra(KEY_VOLUME, volume.coerceIn(0f, 1f))
             }.also { context.sendBroadcast(it) }
         }
 

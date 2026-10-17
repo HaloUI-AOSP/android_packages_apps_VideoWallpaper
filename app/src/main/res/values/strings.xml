@@ -8,6 +8,7 @@
     <string name="choose_video_file">Choose video file</string>
     <string name="choose_video_summary">Select a video from storage</string>
     <string name="play_video_with_sound">Play video with sound</string>
+    <string name="audio_volume">Audio volume</string>
     <string name="enable">Enable</string>
     <string name="disable">Disable</string>
     <string name="video_set">Video wallpaper set</string>
