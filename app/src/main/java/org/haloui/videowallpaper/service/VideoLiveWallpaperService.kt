@@ -39,6 +39,9 @@ class VideoLiveWallpaperService : WallpaperService() {
     internal inner class VideoEngine : Engine() {
         private var mediaPlayer: MediaPlayer? = null
         private var isPrepared = false
+        private var isPreparing = false
+        private var engineVisible = false
+        private var lastPosition = 0
         private var glThread: HandlerThread? = null
         private var glHandler: Handler? = null
         private var eglDisplay: EGLDisplay = EGL14.EGL_NO_DISPLAY
@@ -104,12 +107,40 @@ class VideoLiveWallpaperService : WallpaperService() {
         private val broadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 glHandler?.post {
-                    if (intent.getBooleanExtra(KEY_RELOAD, false)) {
-                        loadTransform()
-                        initPlayer(0)
-                    } else {
-                        val pos = if (isPrepared) mediaPlayer?.currentPosition ?: 0 else 0
-                        initPlayer(pos)
+                    when (intent.action) {
+                        Intent.ACTION_USER_BACKGROUND -> {
+                            if (isPrepared) {
+                                lastPosition = mediaPlayer?.currentPosition ?: lastPosition
+                            }
+                            releasePlayer()
+                        }
+                        Intent.ACTION_USER_FOREGROUND -> {
+                            val pos = if (isPrepared) mediaPlayer?.currentPosition ?: lastPosition else lastPosition
+                            initPlayer(pos)
+                        }
+                        Intent.ACTION_USER_UNLOCKED,
+                        Intent.ACTION_USER_PRESENT -> {
+                            if (mediaPlayer == null || (!isPrepared && !isPreparing)) {
+                                initPlayer(lastPosition)
+                            } else if (isPrepared && (engineVisible || isVisible)) {
+                                runCatching {
+                                    if (mediaPlayer?.isPlaying == false) mediaPlayer?.start()
+                                    drawFrame()
+                                }.onFailure {
+                                    initPlayer(lastPosition)
+                                }
+                            }
+                        }
+                        else -> {
+                            if (intent.getBooleanExtra(KEY_RELOAD, false)) {
+                                lastPosition = 0
+                                loadTransform()
+                                initPlayer(0)
+                            } else {
+                                val pos = if (isPrepared) mediaPlayer?.currentPosition ?: lastPosition else lastPosition
+                                initPlayer(pos)
+                            }
+                        }
                     }
                 }
             }
@@ -122,7 +153,12 @@ class VideoLiveWallpaperService : WallpaperService() {
             glThread = HandlerThread("WallpaperGL").apply { start() }
             glHandler = Handler(glThread!!.looper)
 
-            val filter = IntentFilter(VIDEO_PARAMS_CONTROL_ACTION)
+            val filter = IntentFilter(VIDEO_PARAMS_CONTROL_ACTION).apply {
+                addAction(Intent.ACTION_USER_BACKGROUND)
+                addAction(Intent.ACTION_USER_FOREGROUND)
+                addAction(Intent.ACTION_USER_UNLOCKED)
+                addAction(Intent.ACTION_USER_PRESENT)
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 registerReceiver(broadcastReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
             } else {
@@ -134,7 +170,7 @@ class VideoLiveWallpaperService : WallpaperService() {
             super.onSurfaceCreated(holder)
             glHandler?.post {
                 initGL(holder.surface)
-                initPlayer(0)
+                initPlayer(lastPosition)
             }
         }
 
@@ -161,14 +197,26 @@ class VideoLiveWallpaperService : WallpaperService() {
         override fun onVisibilityChanged(visible: Boolean) {
             super.onVisibilityChanged(visible)
             glHandler?.post {
-                val player = mediaPlayer ?: return@post
-                if (!isPrepared) return@post
+                engineVisible = visible
                 if (visible) {
                     loadTransform()
-                    if (!player.isPlaying) player.start()
-                    drawFrame()
+                    val player = mediaPlayer
+                    if (player == null || (!isPrepared && !isPreparing)) {
+                        initPlayer(lastPosition)
+                    } else if (isPrepared) {
+                        runCatching {
+                            if (!player.isPlaying) player.start()
+                            drawFrame()
+                        }.onFailure {
+                            initPlayer(lastPosition)
+                        }
+                    }
                 } else {
-                    if (player.isPlaying) player.pause()
+                    val player = mediaPlayer ?: return@post
+                    if (isPrepared && player.isPlaying) {
+                        lastPosition = player.currentPosition
+                        player.pause()
+                    }
                 }
             }
         }
@@ -176,6 +224,9 @@ class VideoLiveWallpaperService : WallpaperService() {
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
             super.onSurfaceDestroyed(holder)
             glHandler?.post {
+                if (isPrepared) {
+                    lastPosition = mediaPlayer?.currentPosition ?: lastPosition
+                }
                 releasePlayer()
                 releaseGL()
             }
@@ -250,6 +301,7 @@ class VideoLiveWallpaperService : WallpaperService() {
                         }
                     }
                     setOnPreparedListener { mp ->
+                        isPreparing = false
                         isPrepared = true
                         mp.setVolume(volume, volume)
                         if (!unmuted) {
@@ -262,12 +314,13 @@ class VideoLiveWallpaperService : WallpaperService() {
                             }
                         }
                         if (seekMs > 0) mp.seekTo(seekMs)
-                        if (isVisible) mp.start()
+                        if (engineVisible || isVisible) mp.start()
                     }
                     setOnErrorListener { _, _, _ ->
-                        isPrepared = false
+                        releasePlayer()
                         true
                     }
+                    isPreparing = true
                     prepareAsync()
                 } catch (_: Exception) {
                     releasePlayer()
@@ -276,6 +329,7 @@ class VideoLiveWallpaperService : WallpaperService() {
         }
 
         private fun releasePlayer() {
+            isPreparing = false
             isPrepared = false
             mediaPlayer?.run {
                 runCatching { reset() }
