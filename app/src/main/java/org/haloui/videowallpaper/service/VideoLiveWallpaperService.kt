@@ -282,14 +282,9 @@ class VideoLiveWallpaperService : WallpaperService() {
                     setSurface(outSurface)
                     setAudioAttributes(
                         AudioAttributes.Builder()
-                            .setUsage(
-                                if (unmuted) AudioAttributes.USAGE_MEDIA
-                                else AudioAttributes.USAGE_ALARM
-                            )
-                            .setContentType(
-                                if (unmuted) AudioAttributes.CONTENT_TYPE_MOVIE
-                                else AudioAttributes.CONTENT_TYPE_SONIFICATION
-                            )
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+                            .setSpatializationBehavior(AudioAttributes.SPATIALIZATION_BEHAVIOR_NEVER)
                             .setAllowedCapturePolicy(
                                 if (unmuted) AudioAttributes.ALLOW_CAPTURE_BY_ALL
                                 else AudioAttributes.ALLOW_CAPTURE_BY_NONE
@@ -312,15 +307,6 @@ class VideoLiveWallpaperService : WallpaperService() {
                         isPreparing = false
                         isPrepared = true
                         mp.setVolume(volume, volume)
-                        if (!unmuted) {
-                            runCatching {
-                                mp.trackInfo?.forEachIndexed { index, info ->
-                                    if (info.trackType == MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_AUDIO) {
-                                        mp.deselectTrack(index)
-                                    }
-                                }
-                            }
-                        }
                         if (seekMs > 0) mp.seekTo(seekMs)
                         if (engineVisible || isVisible) mp.start()
                     }
